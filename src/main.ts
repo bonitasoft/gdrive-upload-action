@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import * as google from '@googleapis/drive'
-import * as fs from 'fs'
+import fs from 'fs'
 import path from 'path'
 
 // Google Authorization scopes
@@ -33,7 +33,7 @@ export async function run(): Promise<void> {
     const targetFilePath = core.getInput('targetFilePath')
     const force = core.getBooleanInput('force')
 
-    const fileId = await createFile(
+    const fileId = await uploadFile(
       parentFolderId,
       sourceFilePath,
       targetFilePath,
@@ -52,6 +52,45 @@ export async function run(): Promise<void> {
   }
 }
 
+async function uploadFile(
+  parentId: string,
+  sourceFilePath: string,
+  targetFilePath: string | null,
+  force: boolean
+): Promise<string | null> {
+  if (!targetFilePath) {
+    const paths = sourceFilePath.split(path.sep)
+    targetFilePath = paths[paths.length - 1] //FIXME this is equal to the filename and not the full path, use substring instead
+  }
+
+  const targetPaths = targetFilePath.split(path.sep)
+  while (targetPaths.length > 1) {
+    const folderName = targetPaths.shift()
+    if (folderName !== undefined) {
+      parentId = await createFolder(parentId, folderName)
+    }
+  }
+
+  const fileName = targetPaths[0]
+  const fileId = await getFileId(parentId, fileName)
+  if (fileId && !force) {
+    throw new Error(
+      `A file with name '${fileName}' already exists in folder identified by '${parentId}'. ` +
+        `Use 'force' option to overwrite existing file.`
+    )
+  } else if (fileId && force) {
+    core.debug(
+      `Updating existing file '${fileName}' in folder identified by '${parentId}'`
+    )
+    return await updateFile(fileId, sourceFilePath)
+  } else {
+    core.debug(
+      `Creating file '${fileName}' in folder identified by '${parentId}'`
+    )
+    return await createFile(parentId, fileName, sourceFilePath)
+  }
+}
+
 async function getFileId(
   parentId: string,
   fileName: string
@@ -67,7 +106,7 @@ async function getFileId(
 
   const files: google.drive_v3.Schema$File[] | undefined = response.data.files
   if (files === undefined || files.length === 0) {
-    core.debug(`No entry match the file name '${fileName}'`)
+    core.debug(`No entry matches the file name '${fileName}'`)
     return null
   }
   if (files.length > 1) {
@@ -78,27 +117,15 @@ async function getFileId(
 
 async function createFolder(
   parentId: string,
-  folderName: string | undefined
+  folderName: string
 ): Promise<string> {
   // Check if folder already exists and is unique
-  const {
-    data: { files }
-  } = await drive.files.list({
-    q: `name='${folderName}' and '${parentId}' in parents and trashed=false`,
-    fields: 'files(id)',
-    includeItemsFromAllDrives: true,
-    supportsAllDrives: true
-  })
-
-  if (files && files.length > 1) {
-    throw new Error(
-      `More than one entry match ${folderName} folder name in folder ${parentId}`
-    )
-  }
-  if (files && files.length === 1 && files[0] && files[0].id) {
+  const folderId = await getFileId(parentId, folderName)
+  if (folderId !== null) {
     core.debug(`Folder '${folderName}' already exists in folder '${parentId}'`)
-    return files[0].id
+    return folderId
   }
+
   core.debug(`Creating folder '${folderName}' in folder '${parentId}'`)
   const requestParams: google.drive_v3.Params$Resource$Files$Create = {
     requestBody: {
@@ -120,57 +147,48 @@ async function createFolder(
 
 async function createFile(
   parentId: string,
-  sourceFilePath: string,
-  targetFilePath: string | null,
-  force: boolean
-): Promise<string | null> {
-  if (!targetFilePath) {
-    const paths = sourceFilePath.split(path.sep)
-    targetFilePath = paths[paths.length - 1]
+  fileName: string,
+  sourceFilePath: string
+): Promise<string> {
+  const requestParams: google.drive_v3.Params$Resource$Files$Create = {
+    requestBody: {
+      parents: [parentId],
+      name: fileName
+    },
+    media: {
+      body: fs.createReadStream(sourceFilePath)
+    },
+    fields: 'id',
+    supportsAllDrives: true
   }
-  const targetPaths = targetFilePath.split(path.sep)
-  while (targetPaths.length > 1) {
-    const folderName = targetPaths.shift()
-    parentId = await createFolder(parentId, folderName)
-  }
-  const fileName = targetPaths[0]
-  const fileId = await getFileId(parentId, fileName)
-  if (fileId && !force) {
+  const response = await drive.files.create(requestParams)
+  const file: google.drive_v3.Schema$File = response.data
+  core.debug(`File id: ${file.id}`)
+  if (!file.id) {
     throw new Error(
-      `A file with name '${fileName}' already exists in folder with id '${parentId}'. Use 'force' option to overwrite existing file.`
+      `Failed to create file '${fileName}' in folder identified by '${parentId}'`
     )
-  } else if (fileId && force) {
-    core.debug(
-      `Updating existing file '${fileName}' under folder '${parentId}'`
-    )
-    const requestParams: google.drive_v3.Params$Resource$Files$Update = {
-      media: {
-        body: fs.createReadStream(sourceFilePath)
-      },
-      fileId,
-      fields: 'id',
-      supportsAllDrives: true
-    }
-    const response = await drive.files.update(requestParams)
-    const file: google.drive_v3.Schema$File = response.data
-    core.debug(`File id: ${file.id}`)
-    return file.id || null
-  } else {
-    core.debug(`Creating file '${fileName}' under folder '${parentId}'`)
-    const requestParams: google.drive_v3.Params$Resource$Files$Create = {
-      requestBody: {
-        parents: [parentId],
-        name: fileName
-      },
-      media: {
-        body: fs.createReadStream(sourceFilePath)
-      },
-      fields: 'id',
-      supportsAllDrives: true
-    }
-    const response = await drive.files.create(requestParams)
-    const file: google.drive_v3.Schema$File = response.data
-    core.debug(`File id: ${file.id}`)
-    return file.id || null
   }
+  return file.id
+}
+
+async function updateFile(
+  fileId: string,
+  sourceFilePath: string
+): Promise<string> {
+  const requestParams: google.drive_v3.Params$Resource$Files$Update = {
+    fileId,
+    media: {
+      body: fs.createReadStream(sourceFilePath)
+    },
+    fields: 'id',
+    supportsAllDrives: true
+  }
+  const response = await drive.files.update(requestParams)
+  const file: google.drive_v3.Schema$File = response.data
+  core.debug(`File id: ${file.id}`)
+  if (!file.id) {
+    throw new Error(`Failed to update file identified by '${fileId}'`)
+  }
+  return file.id
 }
