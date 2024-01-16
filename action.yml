@@ -6,10 +6,22 @@ inputs:
   credentials:
     description: 'Google API credentials in Base64 format'
     required: true
+  parentFolderId:
+    description: 'Parent Folder ID in Google Drive'
+    required: true
+  sourceFilePath:
+    description: 'The file to upload.'
+    required: true
+  force:
+    type: boolean
+    description: 'Overwrite remote file on the Drive if it does already exist.'
+    default: false
+  targetFilePath:
+    description: 'The remote file path in Google Drive of the uploaded file relative to the given parent folder. Use parent folder root with source file name when not set.'
 
 outputs:
-  TODO:
-    description: 'TODO'
+  fileId:
+    description: 'The fileId of the uploaded file.'
 
 runs:
   using: node20

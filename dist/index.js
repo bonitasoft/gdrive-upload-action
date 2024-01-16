@@ -51202,11 +51202,15 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const google = __importStar(__nccwpck_require__(2476));
 const fs = __importStar(__nccwpck_require__(7147));
+const path_1 = __importDefault(__nccwpck_require__(1017));
 // Google Authorization scopes
 const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 // Init Google Drive API instance
@@ -51227,8 +51231,13 @@ function initDriveAPI() {
 async function run() {
     try {
         // Get inputs
+        const parentFolderId = core.getInput('parentFolderId', { required: true });
+        const sourceFilePath = core.getInput('sourceFilePath', { required: true });
+        const targetFilePath = core.getInput('targetFilePath');
+        const force = core.getBooleanInput('force');
+        const fileId = await createFile(parentFolderId, sourceFilePath, targetFilePath, force);
         // Set outputs
-        core.setOutput('TODO', 'TODO');
+        core.setOutput('fileId', fileId);
     }
     catch (error) {
         // Fail the workflow run if an error occurs
@@ -51241,9 +51250,6 @@ async function run() {
     }
 }
 exports.run = run;
-async function upload() {
-    // TODO
-}
 async function getFileId(parentId, fileName) {
     core.debug(`Getting file with name '${fileName}' under folder '${parentId}'`);
     const requestParams = {
@@ -51264,7 +51270,21 @@ async function getFileId(parentId, fileName) {
     return files[0].id || null;
 }
 async function createFolder(parentId, folderName) {
-    core.debug(`Creating folder '${folderName}' under folder '${parentId}'`);
+    // Check if folder already exists and is unique
+    const { data: { files } } = await drive.files.list({
+        q: `name='${folderName}' and '${parentId}' in parents and trashed=false`,
+        fields: 'files(id)',
+        includeItemsFromAllDrives: true,
+        supportsAllDrives: true
+    });
+    if (files && files.length > 1) {
+        throw new Error(`More than one entry match ${folderName} folder name in folder ${parentId}`);
+    }
+    if (files && files.length === 1 && files[0] && files[0].id) {
+        core.debug(`Folder '${folderName}' already exists in folder '${parentId}'`);
+        return files[0].id;
+    }
+    core.debug(`Creating folder '${folderName}' in folder '${parentId}'`);
     const requestParams = {
         requestBody: {
             parents: [parentId],
@@ -51277,25 +51297,59 @@ async function createFolder(parentId, folderName) {
     const response = await drive.files.create(requestParams);
     const folder = response.data;
     core.debug(`Folder id: ${folder.id}`);
-    return folder.id || null;
+    if (!folder.id) {
+        throw new Error(`Failed to create folder ${folderName} in ${parentId}`);
+    }
+    return folder.id;
 }
-async function createFile(parentId, fileName, filePath) {
-    core.debug(`Creating file '${fileName}' under folder '${parentId}'`);
-    const requestParams = {
-        requestBody: {
-            parents: [parentId],
-            name: fileName
-        },
-        media: {
-            body: fs.createReadStream(filePath)
-        },
-        fields: 'id',
-        supportsAllDrives: true
-    };
-    const response = await drive.files.create(requestParams);
-    const file = response.data;
-    core.debug(`File id: ${file.id}`);
-    return file.id || null;
+async function createFile(parentId, sourceFilePath, targetFilePath, force) {
+    if (!targetFilePath) {
+        const paths = sourceFilePath.split(path_1.default.sep);
+        targetFilePath = paths[paths.length - 1];
+    }
+    const targetPaths = targetFilePath.split(path_1.default.sep);
+    while (targetPaths.length > 1) {
+        const folderName = targetPaths.shift();
+        parentId = await createFolder(parentId, folderName);
+    }
+    const fileName = targetPaths[0];
+    const fileId = await getFileId(parentId, fileName);
+    if (fileId && !force) {
+        throw new Error(`A file with name '${fileName}' already exists in folder with id '${parentId}'. Use 'force' option to overwrite existing file.`);
+    }
+    else if (fileId && force) {
+        core.debug(`Updating existing file '${fileName}' under folder '${parentId}'`);
+        const requestParams = {
+            media: {
+                body: fs.createReadStream(sourceFilePath)
+            },
+            fileId,
+            fields: 'id',
+            supportsAllDrives: true
+        };
+        const response = await drive.files.update(requestParams);
+        const file = response.data;
+        core.debug(`File id: ${file.id}`);
+        return file.id || null;
+    }
+    else {
+        core.debug(`Creating file '${fileName}' under folder '${parentId}'`);
+        const requestParams = {
+            requestBody: {
+                parents: [parentId],
+                name: fileName
+            },
+            media: {
+                body: fs.createReadStream(sourceFilePath)
+            },
+            fields: 'id',
+            supportsAllDrives: true
+        };
+        const response = await drive.files.create(requestParams);
+        const file = response.data;
+        core.debug(`File id: ${file.id}`);
+        return file.id || null;
+    }
 }
 
 
