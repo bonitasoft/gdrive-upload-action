@@ -28,9 +28,9 @@ function initDriveAPI(): google.drive_v3.Drive {
 export async function run(): Promise<void> {
   try {
     // Get inputs
-    const parentFolderId = core.getInput('parentFolderId', { required: true })
-    const sourceFilePath = core.getInput('sourceFilePath', { required: true })
-    const targetFilePath = core.getInput('targetFilePath')
+    const parentFolderId = core.getInput('parent-folder-id', { required: true })
+    const sourceFilePath = core.getInput('source-filepath', { required: true })
+    const targetFilePath = core.getInput('target-filepath')
     const overwrite = core.getBooleanInput('overwrite')
 
     const fileId = await uploadFile(
@@ -41,7 +41,7 @@ export async function run(): Promise<void> {
     )
 
     // Set outputs
-    core.setOutput('fileId', fileId)
+    core.setOutput('file-id', fileId)
   } catch (error) {
     // Fail the workflow run if an error occurs
     if (error instanceof Error) {

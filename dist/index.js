@@ -51231,13 +51231,13 @@ function initDriveAPI() {
 async function run() {
     try {
         // Get inputs
-        const parentFolderId = core.getInput('parentFolderId', { required: true });
-        const sourceFilePath = core.getInput('sourceFilePath', { required: true });
-        const targetFilePath = core.getInput('targetFilePath');
+        const parentFolderId = core.getInput('parent-folder-id', { required: true });
+        const sourceFilePath = core.getInput('source-filepath', { required: true });
+        const targetFilePath = core.getInput('target-filepath');
         const overwrite = core.getBooleanInput('overwrite');
         const fileId = await uploadFile(parentFolderId, sourceFilePath, targetFilePath, overwrite);
         // Set outputs
-        core.setOutput('fileId', fileId);
+        core.setOutput('file-id', fileId);
     }
     catch (error) {
         // Fail the workflow run if an error occurs
