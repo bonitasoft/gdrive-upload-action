@@ -51253,7 +51253,7 @@ exports.run = run;
 async function uploadFile(parentId, sourceFilePath, targetFilePath, overwrite) {
     if (!targetFilePath) {
         const paths = sourceFilePath.split(path_1.default.sep);
-        targetFilePath = paths[paths.length - 1]; //FIXME this is equal to the filename and not the full path, use substring instead
+        targetFilePath = paths[paths.length - 1];
     }
     const targetPaths = targetFilePath.split(path_1.default.sep);
     while (targetPaths.length > 1) {

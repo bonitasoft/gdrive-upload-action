@@ -60,7 +60,7 @@ async function uploadFile(
 ): Promise<string | null> {
   if (!targetFilePath) {
     const paths = sourceFilePath.split(path.sep)
-    targetFilePath = paths[paths.length - 1] //FIXME this is equal to the filename and not the full path, use substring instead
+    targetFilePath = paths[paths.length - 1]
   }
 
   const targetPaths = targetFilePath.split(path.sep)
