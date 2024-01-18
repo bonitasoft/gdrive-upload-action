@@ -26,7 +26,7 @@ GitHub Action that uploads files to Google Drive.
 
 | Name | Description |
 | - | - |
-| `credentials` | The ID of the uploaded file. |
+| `fileId` | The ID of the uploaded file. |
 
 ## Examples
 
