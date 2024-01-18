@@ -51,12 +51,28 @@ jobs:
         id: checkout
         uses: actions/checkout@v4
 
+      - name: Retrieve secrets from Keeper
+        uses: Keeper-Security/ksm-action@master
+        with:
+          keeper-secret-config: ${{ secrets.KSM_CONFIG }}
+          secrets: |
+            cj_ivsBhXx5BLwLM95iEVw/field/password > env:GDRIVE_SERVICE_ACCOUNT_CREDENTIALS
+
+      - name: Create dummy file
+        run: |
+          mkdir -p output/files
+          echo 'Hello World' > output/files/hello.txt
+
       - name: Test Local Action
         id: test-action
         uses: ./
         with:
-          milliseconds: 2000
+          credentials: ${{ env.GDRIVE_SERVICE_ACCOUNT_CREDENTIALS }}
+          parentFolderId: ${{ vars.GDRIVE_GITHUB_ACTION_FOLDER }}
+          sourceFilePath: output/files/hello.txt
+          targetFilePath: output/community/test/hello_1.txt
+          overwrite: true
 
       - name: Print Output
         id: output
-        run: echo "${{ steps.test-action.outputs.time }}"
+        run: echo "${{ steps.test-action.outputs.fileId }}"

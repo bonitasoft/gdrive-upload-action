@@ -1,23 +1,29 @@
-name: 'The name of your action here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'gdrive-upload-action'
+description: 'GitHub Action that uploads files to Google Drive.'
+author: 'Bonitasoft'
 
-# Add your action's branding here. This will appear on the GitHub Marketplace.
-branding:
-  icon: 'heart'
-  color: 'red'
-
-# Define your inputs here.
 inputs:
-  milliseconds:
-    description: 'Your input description here'
+  credentials:
+    description: 'Google API credentials in base64 format.'
     required: true
-    default: '1000'
+  parentFolderId:
+    description: 'The parent folder ID in Google Drive.'
+    required: true
+  sourceFilePath:
+    description: 'The path of the local file to upload.'
+    required: true
+  targetFilePath:
+    description:
+      'The remote file path in Google Drive of the uploaded file relative to the
+      given parent folder. Use parent folder root with source filename when not
+      set.'
+  overwrite:
+    description: 'Overwrite remote file on Google Drive if it does already exist.'
+    default: 'true'
 
-# Define your outputs here.
 outputs:
-  time:
-    description: 'Your output description here'
+  fileId:
+    description: 'The ID of the uploaded file.'
 
 runs:
   using: node20
