@@ -51234,8 +51234,8 @@ async function run() {
         const parentFolderId = core.getInput('parentFolderId', { required: true });
         const sourceFilePath = core.getInput('sourceFilePath', { required: true });
         const targetFilePath = core.getInput('targetFilePath');
-        const force = core.getBooleanInput('force');
-        const fileId = await uploadFile(parentFolderId, sourceFilePath, targetFilePath, force);
+        const overwrite = core.getBooleanInput('overwrite');
+        const fileId = await uploadFile(parentFolderId, sourceFilePath, targetFilePath, overwrite);
         // Set outputs
         core.setOutput('fileId', fileId);
     }
@@ -51250,7 +51250,7 @@ async function run() {
     }
 }
 exports.run = run;
-async function uploadFile(parentId, sourceFilePath, targetFilePath, force) {
+async function uploadFile(parentId, sourceFilePath, targetFilePath, overwrite) {
     if (!targetFilePath) {
         const paths = sourceFilePath.split(path_1.default.sep);
         targetFilePath = paths[paths.length - 1]; //FIXME this is equal to the filename and not the full path, use substring instead
@@ -51264,11 +51264,11 @@ async function uploadFile(parentId, sourceFilePath, targetFilePath, force) {
     }
     const fileName = targetPaths[0];
     const fileId = await getFileId(parentId, fileName);
-    if (fileId && !force) {
+    if (fileId && !overwrite) {
         throw new Error(`A file with name '${fileName}' already exists in folder identified by '${parentId}'. ` +
-            `Use 'force' option to overwrite existing file.`);
+            `Use 'overwrite' option to overwrite existing file.`);
     }
-    else if (fileId && force) {
+    else if (fileId && overwrite) {
         core.debug(`Updating existing file '${fileName}' in folder identified by '${parentId}'`);
         return await updateFile(fileId, sourceFilePath);
     }
