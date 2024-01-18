@@ -71,7 +71,7 @@ jobs:
           parentFolderId: ${{ vars.GDRIVE_GITHUB_ACTION_FOLDER }}
           sourceFilePath: output/files/hello.txt
           targetFilePath: output/community/test/hello_1.txt
-          force: true
+          overwrite: true
 
       - name: Print Output
         id: output

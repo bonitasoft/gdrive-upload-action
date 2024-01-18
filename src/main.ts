@@ -31,13 +31,13 @@ export async function run(): Promise<void> {
     const parentFolderId = core.getInput('parentFolderId', { required: true })
     const sourceFilePath = core.getInput('sourceFilePath', { required: true })
     const targetFilePath = core.getInput('targetFilePath')
-    const force = core.getBooleanInput('force')
+    const overwrite = core.getBooleanInput('overwrite')
 
     const fileId = await uploadFile(
       parentFolderId,
       sourceFilePath,
       targetFilePath,
-      force
+      overwrite
     )
 
     // Set outputs
@@ -56,7 +56,7 @@ async function uploadFile(
   parentId: string,
   sourceFilePath: string,
   targetFilePath: string | null,
-  force: boolean
+  overwrite: boolean
 ): Promise<string | null> {
   if (!targetFilePath) {
     const paths = sourceFilePath.split(path.sep)
@@ -73,12 +73,12 @@ async function uploadFile(
 
   const fileName = targetPaths[0]
   const fileId = await getFileId(parentId, fileName)
-  if (fileId && !force) {
+  if (fileId && !overwrite) {
     throw new Error(
       `A file with name '${fileName}' already exists in folder identified by '${parentId}'. ` +
-        `Use 'force' option to overwrite existing file.`
+        `Use 'overwrite' option to overwrite existing file.`
     )
-  } else if (fileId && force) {
+  } else if (fileId && overwrite) {
     core.debug(
       `Updating existing file '${fileName}' in folder identified by '${parentId}'`
     )

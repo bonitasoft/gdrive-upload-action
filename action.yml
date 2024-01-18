@@ -17,9 +17,9 @@ inputs:
       'The remote file path in Google Drive of the uploaded file relative to the
       given parent folder. Use parent folder root with source file name when not
       set.'
-  force:
+  overwrite:
     description: 'Overwrite remote file on the Drive if it does already exist.'
-    default: 'false'
+    default: 'true'
 
 outputs:
   fileId:
