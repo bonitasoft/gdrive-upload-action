@@ -1,6 +1,6 @@
 {
   "name": "@bonitasoft/gdrive-upload-action",
-  "description": "Upload to Google Drive GitHub Actions",
+  "description": "GitHub Action that uploads files to Google Drive.",
   "version": "0.0.1",
   "author": "",
   "private": true,

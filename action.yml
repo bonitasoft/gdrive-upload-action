@@ -1,16 +1,16 @@
 name: 'gdrive-upload-action'
-description: 'Github Action that uploads files to Google Drive'
+description: 'GitHub Action that uploads files to Google Drive.'
 author: 'Bonitasoft'
 
 inputs:
   credentials:
-    description: 'Google API credentials in Base64 format'
+    description: 'Google API credentials in Base64 format.'
     required: true
   parentFolderId:
-    description: 'Parent Folder ID in Google Drive'
+    description: 'The parent folder ID in Google Drive.'
     required: true
   sourceFilePath:
-    description: 'The file to upload.'
+    description: 'The path of the local file to upload.'
     required: true
   targetFilePath:
     description:
@@ -18,12 +18,12 @@ inputs:
       given parent folder. Use parent folder root with source file name when not
       set.'
   overwrite:
-    description: 'Overwrite remote file on the Drive if it does already exist.'
+    description: 'Overwrite remote file on Google Drive if it does already exist.'
     default: 'true'
 
 outputs:
   fileId:
-    description: 'The fileId of the uploaded file.'
+    description: 'The ID of the uploaded file.'
 
 runs:
   using: node20
