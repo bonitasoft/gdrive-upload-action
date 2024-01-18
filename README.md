@@ -17,16 +17,16 @@ GitHub Action that uploads files to Google Drive.
 | Name | Description | Required |
 | - | - | - |
 | `credentials` | Google API credentials in base64 format. | `true` |
-| `parentFolderId` | The parent folder ID in Google Drive. | `true` |
-| `sourceFilePath` | The path of the local file to upload. | `true` |
-| `targetFilePath` | The remote file path in Google Drive of the uploaded file relative to the given parent folder. Use parent folder root with source filename when not set. | `false` |
+| `parent-folder-id` | The parent folder ID in Google Drive. | `true` |
+| `source-filepath` | The path of the local file to upload. | `true` |
+| `target-filepath` | The remote file path in Google Drive of the uploaded file relative to the given parent folder. Use parent folder root with source filename when not set. | `false` |
 | `overwrite` | Overwrite remote file on Google Drive if it does already exist. | `false` (default: `true`) |
 
 ### Outputs
 
 | Name | Description |
 | - | - |
-| `fileId` | The ID of the uploaded file. |
+| `file-id` | The ID of the uploaded file. |
 
 ## Examples
 

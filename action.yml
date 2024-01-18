@@ -6,13 +6,13 @@ inputs:
   credentials:
     description: 'Google API credentials in base64 format.'
     required: true
-  parentFolderId:
+  parent-folder-id:
     description: 'The parent folder ID in Google Drive.'
     required: true
-  sourceFilePath:
+  source-filepath:
     description: 'The path of the local file to upload.'
     required: true
-  targetFilePath:
+  target-filepath:
     description:
       'The remote file path in Google Drive of the uploaded file relative to the
       given parent folder. Use parent folder root with source filename when not
@@ -22,7 +22,7 @@ inputs:
     default: 'true'
 
 outputs:
-  fileId:
+  file-id:
     description: 'The ID of the uploaded file.'
 
 runs:
