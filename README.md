@@ -55,5 +55,5 @@ steps:
 
   - name: Print Output
     id: output
-    run: echo "${{ steps.gdrive-upload.outputs.fileId }}"
+    run: echo "${{ steps.gdrive-upload.outputs.file-id }}"
 ```
