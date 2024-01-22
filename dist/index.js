@@ -51249,7 +51249,7 @@ async function run() {
                 checksumTargetFilePath = `${targetFilePath}.sha256`;
             }
             const checksumFile = `${sourceFilePath}.sha256`;
-            fs_1.default.writeFileSync(checksumFile, generateHash(sourceFilePath, 'sha256'));
+            fs_1.default.writeFileSync(checksumFile, await generateHash(sourceFilePath, 'sha256'));
             await uploadFile(drive, parentFolderId, checksumFile, checksumTargetFilePath, true);
         }
         // Set outputs
@@ -51363,7 +51363,7 @@ async function createFile(drive, parentId, fileName, sourceFilePath) {
     if (!file.id) {
         throw new Error(`Failed to create file '${fileName}' in folder identified by '${parentId}'`);
     }
-    const sourceFileMD5Hash = generateHash(sourceFilePath, 'md5');
+    const sourceFileMD5Hash = await generateHash(sourceFilePath, 'md5');
     if (sourceFileMD5Hash !== file.md5Checksum) {
         throw new Error(`Upload error: invalid file md5 checksum detected after upload for ${file.id}!`);
     }
@@ -51384,14 +51384,19 @@ async function updateFile(drive, fileId, sourceFilePath) {
     if (!file.id) {
         throw new Error(`Failed to update file identified by '${fileId}'`);
     }
-    const sourceFileMD5Hash = generateHash(sourceFilePath, 'md5');
+    const sourceFileMD5Hash = await generateHash(sourceFilePath, 'md5');
     if (sourceFileMD5Hash !== file.md5Checksum) {
         throw new Error(`Upload error: invalid file md5 checksum detected after upload for ${file.id} !`);
     }
     return file.id;
 }
-function generateHash(filePath, algorithm) {
-    return crypto_1.default.createHash(algorithm).update(fs_1.default.readFileSync(filePath)).digest('hex');
+async function generateHash(filePath, algorithm) {
+    const hash = crypto_1.default.createHash(algorithm);
+    const input = fs_1.default.createReadStream(filePath);
+    for await (const chunk of input) {
+        hash.update(chunk);
+    }
+    return hash.digest('hex');
 }
 
 
