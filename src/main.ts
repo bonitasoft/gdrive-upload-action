@@ -30,9 +30,9 @@ export async function run(): Promise<void> {
     const overwrite = core.getBooleanInput(INPUT_OVERWRITE)
 
     // Init Google Drive API instance
-    const drive = initDriveAPI(credentials)
+    const drive = exports.initDriveAPI(credentials)
 
-    const fileId = await uploadFile(drive, parentFolderId, sourceFilePath, targetFilePath, overwrite)
+    const fileId = await exports.uploadFile(drive, parentFolderId, sourceFilePath, targetFilePath, overwrite)
 
     // Set outputs
     core.setOutput(OUTPUT_FILE_ID, fileId)
@@ -46,7 +46,7 @@ export async function run(): Promise<void> {
   }
 }
 
-function initDriveAPI(credentials: string): google.drive_v3.Drive {
+export function initDriveAPI(credentials: string): google.drive_v3.Drive {
   const credentialsJSON = JSON.parse(Buffer.from(credentials, 'base64').toString())
   const auth = new google.auth.GoogleAuth({
     credentials: credentialsJSON,
@@ -55,7 +55,7 @@ function initDriveAPI(credentials: string): google.drive_v3.Drive {
   return google.drive({ version: 'v3', auth })
 }
 
-async function uploadFile(
+export async function uploadFile(
   drive: google.drive_v3.Drive,
   parentId: string,
   sourceFilePath: string,
