@@ -51206,7 +51206,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.run = exports.OUTPUT_FILE_ID = exports.INPUT_OVERWRITE = exports.INPUT_TARGET_FILEPATH = exports.INPUT_SOURCE_FILEPATH = exports.INPUT_PARENT_FOLDER_ID = exports.INPUT_CREDENTIALS = void 0;
+exports.run = exports.OUTPUT_FILE_ID = exports.INPUT_CREATE_CHECKSUM = exports.INPUT_OVERWRITE = exports.INPUT_TARGET_FILEPATH = exports.INPUT_SOURCE_FILEPATH = exports.INPUT_PARENT_FOLDER_ID = exports.INPUT_CREDENTIALS = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const google = __importStar(__nccwpck_require__(2476));
 const crypto_1 = __importDefault(__nccwpck_require__(6113));
@@ -51220,6 +51220,7 @@ exports.INPUT_PARENT_FOLDER_ID = 'parent-folder-id';
 exports.INPUT_SOURCE_FILEPATH = 'source-filepath';
 exports.INPUT_TARGET_FILEPATH = 'target-filepath';
 exports.INPUT_OVERWRITE = 'overwrite';
+exports.INPUT_CREATE_CHECKSUM = 'create-checksum';
 // Outputs
 exports.OUTPUT_FILE_ID = 'file-id';
 /**
@@ -51234,9 +51235,23 @@ async function run() {
         const sourceFilePath = core.getInput(exports.INPUT_SOURCE_FILEPATH, { required: true });
         const targetFilePath = core.getInput(exports.INPUT_TARGET_FILEPATH);
         const overwrite = core.getBooleanInput(exports.INPUT_OVERWRITE);
+        const createChecksum = core.getBooleanInput(exports.INPUT_CREATE_CHECKSUM);
         // Init Google Drive API instance
         const drive = initDriveAPI(credentials);
         const fileId = await uploadFile(drive, parentFolderId, sourceFilePath, targetFilePath, overwrite);
+        if (fileId && createChecksum) {
+            let checksumTargetFilePath = '';
+            if (!targetFilePath) {
+                const paths = sourceFilePath.split(path_1.default.sep);
+                checksumTargetFilePath = `${paths[paths.length - 1]}.sha256`;
+            }
+            else {
+                checksumTargetFilePath = `${targetFilePath}.sha256`;
+            }
+            const checksumFile = `${sourceFilePath}.sha256`;
+            fs_1.default.writeFileSync(checksumFile, generateHash(sourceFilePath, 'sha256'));
+            await uploadFile(drive, parentFolderId, checksumFile, checksumTargetFilePath, true);
+        }
         // Set outputs
         core.setOutput(exports.OUTPUT_FILE_ID, fileId);
     }
@@ -51348,7 +51363,7 @@ async function createFile(drive, parentId, fileName, sourceFilePath) {
     if (!file.id) {
         throw new Error(`Failed to create file '${fileName}' in folder identified by '${parentId}'`);
     }
-    const sourceFileMD5Hash = generateMd5Hash(sourceFilePath);
+    const sourceFileMD5Hash = generateHash(sourceFilePath, 'md5');
     if (sourceFileMD5Hash !== file.md5Checksum) {
         throw new Error(`Upload error: invalid file md5 checksum detected after upload for ${file.id}!`);
     }
@@ -51369,14 +51384,14 @@ async function updateFile(drive, fileId, sourceFilePath) {
     if (!file.id) {
         throw new Error(`Failed to update file identified by '${fileId}'`);
     }
-    const sourceFileMD5Hash = generateMd5Hash(sourceFilePath);
+    const sourceFileMD5Hash = generateHash(sourceFilePath, 'md5');
     if (sourceFileMD5Hash !== file.md5Checksum) {
         throw new Error(`Upload error: invalid file md5 checksum detected after upload for ${file.id} !`);
     }
     return file.id;
 }
-function generateMd5Hash(filePath) {
-    return crypto_1.default.createHash('md5').update(fs_1.default.readFileSync(filePath)).digest('hex');
+function generateHash(filePath, algorithm) {
+    return crypto_1.default.createHash(algorithm).update(fs_1.default.readFileSync(filePath)).digest('hex');
 }
 
 

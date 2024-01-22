@@ -20,6 +20,9 @@ inputs:
   overwrite:
     description: 'Overwrite remote file on Google Drive if it does already exist.'
     default: 'true'
+  create-checksum:
+    description: 'Create and upload a sha-256 checksum file next to the uploaded file.'
+    default: 'false'
 
 outputs:
   file-id:

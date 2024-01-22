@@ -13,6 +13,7 @@ export const INPUT_PARENT_FOLDER_ID = 'parent-folder-id'
 export const INPUT_SOURCE_FILEPATH = 'source-filepath'
 export const INPUT_TARGET_FILEPATH = 'target-filepath'
 export const INPUT_OVERWRITE = 'overwrite'
+export const INPUT_CREATE_CHECKSUM = 'create-checksum'
 
 // Outputs
 export const OUTPUT_FILE_ID = 'file-id'
@@ -29,11 +30,24 @@ export async function run(): Promise<void> {
     const sourceFilePath = core.getInput(INPUT_SOURCE_FILEPATH, { required: true })
     const targetFilePath = core.getInput(INPUT_TARGET_FILEPATH)
     const overwrite = core.getBooleanInput(INPUT_OVERWRITE)
+    const createChecksum = core.getBooleanInput(INPUT_CREATE_CHECKSUM)
 
     // Init Google Drive API instance
     const drive = initDriveAPI(credentials)
 
     const fileId = await uploadFile(drive, parentFolderId, sourceFilePath, targetFilePath, overwrite)
+    if (fileId && createChecksum) {
+      let checksumTargetFilePath = ''
+      if (!targetFilePath) {
+        const paths = sourceFilePath.split(path.sep)
+        checksumTargetFilePath = `${paths[paths.length - 1]}.sha256`
+      } else {
+        checksumTargetFilePath = `${targetFilePath}.sha256`
+      }
+      const checksumFile = `${sourceFilePath}.sha256`
+      fs.writeFileSync(checksumFile, generateHash(sourceFilePath, 'sha256'))
+      await uploadFile(drive, parentFolderId, checksumFile, checksumTargetFilePath, true)
+    }
 
     // Set outputs
     core.setOutput(OUTPUT_FILE_ID, fileId)
@@ -163,7 +177,7 @@ async function createFile(
   if (!file.id) {
     throw new Error(`Failed to create file '${fileName}' in folder identified by '${parentId}'`)
   }
-  const sourceFileMD5Hash = generateMd5Hash(sourceFilePath)
+  const sourceFileMD5Hash = generateHash(sourceFilePath, 'md5')
   if (sourceFileMD5Hash !== file.md5Checksum) {
     throw new Error(`Upload error: invalid file md5 checksum detected after upload for ${file.id}!`)
   }
@@ -186,13 +200,13 @@ async function updateFile(drive: google.drive_v3.Drive, fileId: string, sourceFi
     throw new Error(`Failed to update file identified by '${fileId}'`)
   }
 
-  const sourceFileMD5Hash = generateMd5Hash(sourceFilePath)
+  const sourceFileMD5Hash = generateHash(sourceFilePath, 'md5')
   if (sourceFileMD5Hash !== file.md5Checksum) {
     throw new Error(`Upload error: invalid file md5 checksum detected after upload for ${file.id} !`)
   }
   return file.id
 }
 
-function generateMd5Hash(filePath: string): string {
-  return crypto.createHash('md5').update(fs.readFileSync(filePath)).digest('hex')
+function generateHash(filePath: string, algorithm: 'md5' | 'sha256'): string {
+  return crypto.createHash(algorithm).update(fs.readFileSync(filePath)).digest('hex')
 }
