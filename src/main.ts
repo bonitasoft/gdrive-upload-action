@@ -2,6 +2,7 @@ import * as core from '@actions/core'
 import * as google from '@googleapis/drive'
 import fs from 'fs'
 import path from 'path'
+import { hashFileSync } from 'hasha'
 
 // Google Authorization scopes
 const SCOPES = ['https://www.googleapis.com/auth/drive.file']
@@ -153,7 +154,7 @@ async function createFile(
     media: {
       body: fs.createReadStream(sourceFilePath)
     },
-    fields: 'id',
+    fields: 'id,md5Checksum',
     supportsAllDrives: true
   }
   const response = await drive.files.create(requestParams)
@@ -161,6 +162,12 @@ async function createFile(
   core.debug(`File id: ${file.id}`)
   if (!file.id) {
     throw new Error(`Failed to create file '${fileName}' in folder identified by '${parentId}'`)
+  }
+  const sourceFileMD5Hash = hashFileSync(sourceFilePath, {
+    algorithm: 'md5'
+  })
+  if (sourceFileMD5Hash !== file.md5Checksum) {
+    throw new Error(`Upload error: invalid file md5 checksum detected after upload for ${file.id}!`)
   }
   return file.id
 }
@@ -171,7 +178,7 @@ async function updateFile(drive: google.drive_v3.Drive, fileId: string, sourceFi
     media: {
       body: fs.createReadStream(sourceFilePath)
     },
-    fields: 'id',
+    fields: 'id,md5Checksum',
     supportsAllDrives: true
   }
   const response = await drive.files.update(requestParams)
@@ -179,6 +186,13 @@ async function updateFile(drive: google.drive_v3.Drive, fileId: string, sourceFi
   core.debug(`File id: ${file.id}`)
   if (!file.id) {
     throw new Error(`Failed to update file identified by '${fileId}'`)
+  }
+
+  const sourceFileMD5Hash = hashFileSync(sourceFilePath, {
+    algorithm: 'md5'
+  })
+  if (sourceFileMD5Hash !== file.md5Checksum) {
+    throw new Error(`Upload error: invalid file md5 checksum detected after upload for ${file.id} !`)
   }
   return file.id
 }
