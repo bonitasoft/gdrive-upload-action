@@ -6,20 +6,15 @@ import path from 'path'
 // Google Authorization scopes
 const SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
-// Init Google Drive API instance
-const drive = initDriveAPI()
+// Inputs
+export const INPUT_CREDENTIALS = 'credentials'
+export const INPUT_PARENT_FOLDER_ID = 'parent-folder-id'
+export const INPUT_SOURCE_FILEPATH = 'source-filepath'
+export const INPUT_TARGET_FILEPATH = 'target-filepath'
+export const INPUT_OVERWRITE = 'overwrite'
 
-function initDriveAPI(): google.drive_v3.Drive {
-  const credentials = core.getInput('credentials', { required: true })
-  const credentialsJSON = JSON.parse(
-    Buffer.from(credentials, 'base64').toString()
-  )
-  const auth = new google.auth.GoogleAuth({
-    credentials: credentialsJSON,
-    scopes: SCOPES
-  })
-  return google.drive({ version: 'v3', auth })
-}
+// Outputs
+export const OUTPUT_FILE_ID = 'file-id'
 
 /**
  * The main function for the action.
@@ -28,31 +23,40 @@ function initDriveAPI(): google.drive_v3.Drive {
 export async function run(): Promise<void> {
   try {
     // Get inputs
-    const parentFolderId = core.getInput('parent-folder-id', { required: true })
-    const sourceFilePath = core.getInput('source-filepath', { required: true })
-    const targetFilePath = core.getInput('target-filepath')
-    const overwrite = core.getBooleanInput('overwrite')
+    const credentials = core.getInput(INPUT_CREDENTIALS, { required: true })
+    const parentFolderId = core.getInput(INPUT_PARENT_FOLDER_ID, { required: true })
+    const sourceFilePath = core.getInput(INPUT_SOURCE_FILEPATH, { required: true })
+    const targetFilePath = core.getInput(INPUT_TARGET_FILEPATH)
+    const overwrite = core.getBooleanInput(INPUT_OVERWRITE)
 
-    const fileId = await uploadFile(
-      parentFolderId,
-      sourceFilePath,
-      targetFilePath,
-      overwrite
-    )
+    // Init Google Drive API instance
+    const drive = initDriveAPI(credentials)
+
+    const fileId = await uploadFile(drive, parentFolderId, sourceFilePath, targetFilePath, overwrite)
 
     // Set outputs
-    core.setOutput('file-id', fileId)
+    core.setOutput(OUTPUT_FILE_ID, fileId)
   } catch (error) {
     // Fail the workflow run if an error occurs
     if (error instanceof Error) {
       core.setFailed(error.message)
     } else {
-      core.setFailed(JSON.stringify(error))
+      core.setFailed(`Error: ${error}`)
     }
   }
 }
 
+function initDriveAPI(credentials: string): google.drive_v3.Drive {
+  const credentialsJSON = JSON.parse(Buffer.from(credentials, 'base64').toString())
+  const auth = new google.auth.GoogleAuth({
+    credentials: credentialsJSON,
+    scopes: SCOPES
+  })
+  return google.drive({ version: 'v3', auth })
+}
+
 async function uploadFile(
+  drive: google.drive_v3.Drive,
   parentId: string,
   sourceFilePath: string,
   targetFilePath: string | null,
@@ -67,34 +71,27 @@ async function uploadFile(
   while (targetPaths.length > 1) {
     const folderName = targetPaths.shift()
     if (folderName !== undefined) {
-      parentId = await createFolder(parentId, folderName)
+      parentId = await createFolder(drive, parentId, folderName)
     }
   }
 
   const fileName = targetPaths[0]
-  const fileId = await getFileId(parentId, fileName)
+  const fileId = await getFileId(drive, parentId, fileName)
   if (fileId && !overwrite) {
     throw new Error(
       `A file with name '${fileName}' already exists in folder identified by '${parentId}'. ` +
         `Use 'overwrite' option to overwrite existing file.`
     )
   } else if (fileId && overwrite) {
-    core.debug(
-      `Updating existing file '${fileName}' in folder identified by '${parentId}'`
-    )
-    return await updateFile(fileId, sourceFilePath)
+    core.debug(`Updating existing file '${fileName}' in folder identified by '${parentId}'`)
+    return await updateFile(drive, fileId, sourceFilePath)
   } else {
-    core.debug(
-      `Creating file '${fileName}' in folder identified by '${parentId}'`
-    )
-    return await createFile(parentId, fileName, sourceFilePath)
+    core.debug(`Creating file '${fileName}' in folder identified by '${parentId}'`)
+    return await createFile(drive, parentId, fileName, sourceFilePath)
   }
 }
 
-async function getFileId(
-  parentId: string,
-  fileName: string
-): Promise<string | null> {
+async function getFileId(drive: google.drive_v3.Drive, parentId: string, fileName: string): Promise<string | null> {
   core.debug(`Getting file with name '${fileName}' under folder '${parentId}'`)
   const requestParams: google.drive_v3.Params$Resource$Files$List = {
     q: `name='${fileName}' and '${parentId}' in parents and trashed=false`,
@@ -115,12 +112,9 @@ async function getFileId(
   return files[0].id || null
 }
 
-async function createFolder(
-  parentId: string,
-  folderName: string
-): Promise<string> {
+async function createFolder(drive: google.drive_v3.Drive, parentId: string, folderName: string): Promise<string> {
   // Check if folder already exists and is unique
-  const folderId = await getFileId(parentId, folderName)
+  const folderId = await getFileId(drive, parentId, folderName)
   if (folderId !== null) {
     core.debug(`Folder '${folderName}' already exists in folder '${parentId}'`)
     return folderId
@@ -146,6 +140,7 @@ async function createFolder(
 }
 
 async function createFile(
+  drive: google.drive_v3.Drive,
   parentId: string,
   fileName: string,
   sourceFilePath: string
@@ -165,17 +160,12 @@ async function createFile(
   const file: google.drive_v3.Schema$File = response.data
   core.debug(`File id: ${file.id}`)
   if (!file.id) {
-    throw new Error(
-      `Failed to create file '${fileName}' in folder identified by '${parentId}'`
-    )
+    throw new Error(`Failed to create file '${fileName}' in folder identified by '${parentId}'`)
   }
   return file.id
 }
 
-async function updateFile(
-  fileId: string,
-  sourceFilePath: string
-): Promise<string> {
+async function updateFile(drive: google.drive_v3.Drive, fileId: string, sourceFilePath: string): Promise<string> {
   const requestParams: google.drive_v3.Params$Resource$Files$Update = {
     fileId,
     media: {

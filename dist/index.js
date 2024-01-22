@@ -51206,24 +51206,21 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.run = void 0;
+exports.run = exports.OUTPUT_FILE_ID = exports.INPUT_OVERWRITE = exports.INPUT_TARGET_FILEPATH = exports.INPUT_SOURCE_FILEPATH = exports.INPUT_PARENT_FOLDER_ID = exports.INPUT_CREDENTIALS = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const google = __importStar(__nccwpck_require__(2476));
 const fs_1 = __importDefault(__nccwpck_require__(7147));
 const path_1 = __importDefault(__nccwpck_require__(1017));
 // Google Authorization scopes
 const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
-// Init Google Drive API instance
-const drive = initDriveAPI();
-function initDriveAPI() {
-    const credentials = core.getInput('credentials', { required: true });
-    const credentialsJSON = JSON.parse(Buffer.from(credentials, 'base64').toString());
-    const auth = new google.auth.GoogleAuth({
-        credentials: credentialsJSON,
-        scopes: SCOPES
-    });
-    return google.drive({ version: 'v3', auth });
-}
+// Inputs
+exports.INPUT_CREDENTIALS = 'credentials';
+exports.INPUT_PARENT_FOLDER_ID = 'parent-folder-id';
+exports.INPUT_SOURCE_FILEPATH = 'source-filepath';
+exports.INPUT_TARGET_FILEPATH = 'target-filepath';
+exports.INPUT_OVERWRITE = 'overwrite';
+// Outputs
+exports.OUTPUT_FILE_ID = 'file-id';
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -51231,13 +51228,16 @@ function initDriveAPI() {
 async function run() {
     try {
         // Get inputs
-        const parentFolderId = core.getInput('parent-folder-id', { required: true });
-        const sourceFilePath = core.getInput('source-filepath', { required: true });
-        const targetFilePath = core.getInput('target-filepath');
-        const overwrite = core.getBooleanInput('overwrite');
-        const fileId = await uploadFile(parentFolderId, sourceFilePath, targetFilePath, overwrite);
+        const credentials = core.getInput(exports.INPUT_CREDENTIALS, { required: true });
+        const parentFolderId = core.getInput(exports.INPUT_PARENT_FOLDER_ID, { required: true });
+        const sourceFilePath = core.getInput(exports.INPUT_SOURCE_FILEPATH, { required: true });
+        const targetFilePath = core.getInput(exports.INPUT_TARGET_FILEPATH);
+        const overwrite = core.getBooleanInput(exports.INPUT_OVERWRITE);
+        // Init Google Drive API instance
+        const drive = initDriveAPI(credentials);
+        const fileId = await uploadFile(drive, parentFolderId, sourceFilePath, targetFilePath, overwrite);
         // Set outputs
-        core.setOutput('file-id', fileId);
+        core.setOutput(exports.OUTPUT_FILE_ID, fileId);
     }
     catch (error) {
         // Fail the workflow run if an error occurs
@@ -51245,12 +51245,20 @@ async function run() {
             core.setFailed(error.message);
         }
         else {
-            core.setFailed(JSON.stringify(error));
+            core.setFailed(`Error: ${error}`);
         }
     }
 }
 exports.run = run;
-async function uploadFile(parentId, sourceFilePath, targetFilePath, overwrite) {
+function initDriveAPI(credentials) {
+    const credentialsJSON = JSON.parse(Buffer.from(credentials, 'base64').toString());
+    const auth = new google.auth.GoogleAuth({
+        credentials: credentialsJSON,
+        scopes: SCOPES
+    });
+    return google.drive({ version: 'v3', auth });
+}
+async function uploadFile(drive, parentId, sourceFilePath, targetFilePath, overwrite) {
     if (!targetFilePath) {
         const paths = sourceFilePath.split(path_1.default.sep);
         targetFilePath = paths[paths.length - 1];
@@ -51259,25 +51267,25 @@ async function uploadFile(parentId, sourceFilePath, targetFilePath, overwrite) {
     while (targetPaths.length > 1) {
         const folderName = targetPaths.shift();
         if (folderName !== undefined) {
-            parentId = await createFolder(parentId, folderName);
+            parentId = await createFolder(drive, parentId, folderName);
         }
     }
     const fileName = targetPaths[0];
-    const fileId = await getFileId(parentId, fileName);
+    const fileId = await getFileId(drive, parentId, fileName);
     if (fileId && !overwrite) {
         throw new Error(`A file with name '${fileName}' already exists in folder identified by '${parentId}'. ` +
             `Use 'overwrite' option to overwrite existing file.`);
     }
     else if (fileId && overwrite) {
         core.debug(`Updating existing file '${fileName}' in folder identified by '${parentId}'`);
-        return await updateFile(fileId, sourceFilePath);
+        return await updateFile(drive, fileId, sourceFilePath);
     }
     else {
         core.debug(`Creating file '${fileName}' in folder identified by '${parentId}'`);
-        return await createFile(parentId, fileName, sourceFilePath);
+        return await createFile(drive, parentId, fileName, sourceFilePath);
     }
 }
-async function getFileId(parentId, fileName) {
+async function getFileId(drive, parentId, fileName) {
     core.debug(`Getting file with name '${fileName}' under folder '${parentId}'`);
     const requestParams = {
         q: `name='${fileName}' and '${parentId}' in parents and trashed=false`,
@@ -51296,9 +51304,9 @@ async function getFileId(parentId, fileName) {
     }
     return files[0].id || null;
 }
-async function createFolder(parentId, folderName) {
+async function createFolder(drive, parentId, folderName) {
     // Check if folder already exists and is unique
-    const folderId = await getFileId(parentId, folderName);
+    const folderId = await getFileId(drive, parentId, folderName);
     if (folderId !== null) {
         core.debug(`Folder '${folderName}' already exists in folder '${parentId}'`);
         return folderId;
@@ -51321,7 +51329,7 @@ async function createFolder(parentId, folderName) {
     }
     return folder.id;
 }
-async function createFile(parentId, fileName, sourceFilePath) {
+async function createFile(drive, parentId, fileName, sourceFilePath) {
     const requestParams = {
         requestBody: {
             parents: [parentId],
@@ -51341,7 +51349,7 @@ async function createFile(parentId, fileName, sourceFilePath) {
     }
     return file.id;
 }
-async function updateFile(fileId, sourceFilePath) {
+async function updateFile(drive, fileId, sourceFilePath) {
     const requestParams = {
         fileId,
         media: {
