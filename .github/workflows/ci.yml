@@ -72,6 +72,7 @@ jobs:
           source-filepath: output/files/hello.txt
           target-filepath: output/community/test/hello_1.txt
           overwrite: true
+          create-checksum: true
 
       - name: Print Output
         id: output

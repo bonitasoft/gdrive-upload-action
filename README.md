@@ -21,6 +21,7 @@ GitHub Action that uploads files to Google Drive.
 | `source-filepath` | The path of the local file to upload. | `true` |
 | `target-filepath` | The remote file path in Google Drive of the uploaded file relative to the given parent folder. Use parent folder root with source filename when not set. | `false` |
 | `overwrite` | Overwrite remote file on Google Drive if it does already exist. | `false` (default: `true`) |
+| `create-checksum` | Create and upload a sha-256 checksum file next to the uploaded file. | `false` (default: `false`) |
 
 ### Outputs
 
