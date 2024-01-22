@@ -51209,6 +51209,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = exports.OUTPUT_FILE_ID = exports.INPUT_OVERWRITE = exports.INPUT_TARGET_FILEPATH = exports.INPUT_SOURCE_FILEPATH = exports.INPUT_PARENT_FOLDER_ID = exports.INPUT_CREDENTIALS = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const google = __importStar(__nccwpck_require__(2476));
+const crypto_1 = __importDefault(__nccwpck_require__(6113));
 const fs_1 = __importDefault(__nccwpck_require__(7147));
 const path_1 = __importDefault(__nccwpck_require__(1017));
 // Google Authorization scopes
@@ -51338,7 +51339,7 @@ async function createFile(drive, parentId, fileName, sourceFilePath) {
         media: {
             body: fs_1.default.createReadStream(sourceFilePath)
         },
-        fields: 'id',
+        fields: 'id,md5Checksum',
         supportsAllDrives: true
     };
     const response = await drive.files.create(requestParams);
@@ -51346,6 +51347,10 @@ async function createFile(drive, parentId, fileName, sourceFilePath) {
     core.debug(`File id: ${file.id}`);
     if (!file.id) {
         throw new Error(`Failed to create file '${fileName}' in folder identified by '${parentId}'`);
+    }
+    const sourceFileMD5Hash = generateMd5Hash(sourceFilePath);
+    if (sourceFileMD5Hash !== file.md5Checksum) {
+        throw new Error(`Upload error: invalid file md5 checksum detected after upload for ${file.id}!`);
     }
     return file.id;
 }
@@ -51355,7 +51360,7 @@ async function updateFile(drive, fileId, sourceFilePath) {
         media: {
             body: fs_1.default.createReadStream(sourceFilePath)
         },
-        fields: 'id',
+        fields: 'id,md5Checksum',
         supportsAllDrives: true
     };
     const response = await drive.files.update(requestParams);
@@ -51364,7 +51369,14 @@ async function updateFile(drive, fileId, sourceFilePath) {
     if (!file.id) {
         throw new Error(`Failed to update file identified by '${fileId}'`);
     }
+    const sourceFileMD5Hash = generateMd5Hash(sourceFilePath);
+    if (sourceFileMD5Hash !== file.md5Checksum) {
+        throw new Error(`Upload error: invalid file md5 checksum detected after upload for ${file.id} !`);
+    }
     return file.id;
+}
+function generateMd5Hash(filePath) {
+    return crypto_1.default.createHash('md5').update(fs_1.default.readFileSync(filePath)).digest('hex');
 }
 
 
