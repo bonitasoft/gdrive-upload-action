@@ -47,10 +47,11 @@ steps:
     uses: bonitasoft/gdrive-upload-action@v1
     with:
       credentials: ${{ secrets.GDRIVE_CREDENTIALS }} # credentials stored as a GitHub secret
-      parentFolderId: ${{ vars.GDRIVE_FOLDER_ID }} # folder id stored as a GitHub variable
-      sourceFilePath: output/files/hello.txt
-      targetFilePath: test/hello_1.txt
+      parent-folder-id: ${{ vars.GDRIVE_FOLDER_ID }} # folder id stored as a GitHub variable
+      source-filepath: output/files/hello.txt
+      target-filepath: test/hello_1.txt
       overwrite: true
+      create-checksum: true
 
   - name: Print Output
     id: output
