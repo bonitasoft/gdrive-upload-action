@@ -6,7 +6,8 @@
 [![CodeQL](https://github.com/bonitasoft/gdrive-upload-action/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/bonitasoft/gdrive-upload-action/actions/workflows/codeql-analysis.yml)
 [![Coverage](./badges/coverage.svg)](./badges/coverage.svg)
 
-_This project has been bootstrapped with [GitHub Action TypeScript template](https://github.com/actions/typescript-action)._
+_This project has been bootstrapped with
+[GitHub Action TypeScript template](https://github.com/actions/typescript-action)._
 
 GitHub Action that uploads files to Google Drive.
 
@@ -14,19 +15,19 @@ GitHub Action that uploads files to Google Drive.
 
 ### Inputs
 
-| Name | Description | Required |
-| - | - | - |
-| `credentials` | Google API credentials in base64 format. | `true` |
-| `parent-folder-id` | The parent folder ID in Google Drive. | `true` |
-| `source-filepath` | The path of the local file to upload. | `true` |
-| `target-filepath` | The remote file path in Google Drive of the uploaded file relative to the given parent folder. Use parent folder root with source filename when not set. | `false` |
-| `overwrite` | Overwrite remote file on Google Drive if it does already exist. | `false` (default: `true`) |
-| `create-checksum` | Create and upload a sha-256 checksum file next to the uploaded file. | `false` (default: `false`) |
+| Name               | Description                                                                                                                                              | Required                   |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| `credentials`      | Google API credentials in base64 format.                                                                                                                 | `true`                     |
+| `parent-folder-id` | The parent folder ID in Google Drive.                                                                                                                    | `true`                     |
+| `source-filepath`  | The path of the local file to upload.                                                                                                                    | `true`                     |
+| `target-filepath`  | The remote file path in Google Drive of the uploaded file relative to the given parent folder. Use parent folder root with source filename when not set. | `false`                    |
+| `overwrite`        | Overwrite remote file on Google Drive if it does already exist.                                                                                          | `false` (default: `true`)  |
+| `create-checksum`  | Create and upload a sha-256 checksum file next to the uploaded file.                                                                                     | `false` (default: `false`) |
 
 ### Outputs
 
-| Name | Description |
-| - | - |
+| Name      | Description                  |
+| --------- | ---------------------------- |
 | `file-id` | The ID of the uploaded file. |
 
 ## Examples
