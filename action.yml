@@ -14,9 +14,8 @@ inputs:
     required: true
   target-filepath:
     description:
-      'The remote file path in Google Drive of the uploaded file relative to the
-      given parent folder. Use parent folder root with source filename when not
-      set.'
+      'The remote file path in Google Drive of the uploaded file relative to the given parent folder. Use parent folder
+      root with source filename when not set.'
   overwrite:
     description: 'Overwrite remote file on Google Drive if it does already exist.'
     default: 'true'
